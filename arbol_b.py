@@ -3,56 +3,69 @@ from nodo_b import NodoB
 
 class ArbolB:
     def __init__(self, orden):
-        self.orden = orden  # Orden del árbol B
-        self.raiz = NodoB(orden)  # Nodo raíz, inicialmente hoja vacío
+        self.orden = orden
+        self.raiz = NodoB(orden)
 
     def buscar(self, nodo, servicio):
-        # busca recursivmente a todos los proveedores con el tipo de servicio
-        # lo recorre visitando hijos y claves
+        # Busca recursivamente todos los trabajadores con el tipo de servicio especificado
         resultados = []
         i = 0
         while i < len(nodo.claves):
             if not nodo.hoja:
-                # Buscar en el hijo izquierdo antes de la clave
+                # Buscar primero en el hijo izquierdo antes de la clave actual
                 resultados.extend(self.buscar(nodo.hijos[i], servicio))
+
             # Verificar si el proveedor en la clave actual tiene el servicio buscado
-            if hasattr(nodo.proveedores[i], 'servicio') and nodo.proveedores[i].servicio == servicio:
+            if nodo.proveedores[i].tipo_servicio == servicio:
                 resultados.append(nodo.proveedores[i])
+
             i += 1
-        # Buscar también en el último hijo -> derecho
+
+        # Finalmente, buscar en el último hijo (derecho)
         if not nodo.hoja:
             resultados.extend(self.buscar(nodo.hijos[i], servicio))
+
         return resultados
 
     def recorrido_inorden(self, nodo, lista=None):
-        # Recorre el arbol in-order para obtener un lista ordenada por ID
+        # Recorre el árbol en inorden para devolver trabajadores ordenados por ID
         if lista is None:
             lista = []
+
         for i in range(len(nodo.claves)):
             if not nodo.hoja:
                 # Recorrer el hijo izquierdo antes de la clave
                 self.recorrido_inorden(nodo.hijos[i], lista)
-            # Agregar el proveedor asociado a la clave
+
+            # Agregar el proveedor correspondiente a la clave actual
             lista.append(nodo.proveedores[i])
+
         # Recorrer el último hijo después de la última clave
         if not nodo.hoja:
             self.recorrido_inorden(nodo.hijos[len(nodo.claves)], lista)
+
         return lista
 
     def dividir_nodo(self, padre, indice, nodo):
-        # Divide el nodo lleno en dos y mueve la clase del medio al nodo padre
-        # Índice de la clave media
-        t = self.orden // 2
-        # Nuevo nodo que contendrá la mitad derecha
-        nuevo = NodoB(self.orden, nodo.hoja)  # Nuevo nodo que contendrá la mitad derecha
+        # Divide un nodo lleno en dos nodos y sube la clave del medio al padre
 
-        # Copiar las claves y proveedores derechos al nuevo nodo
+        # Calcular índice de la clave media
+        t = self.orden // 2
+
+        # Crear un nuevo nodo que almacenará la mitad derecha
+        nuevo = NodoB(self.orden, nodo.hoja)
+
+        # Copiar claves y proveedores de la mitad derecha al nuevo nodo
         nuevo.claves = nodo.claves[t + 1:]
         nuevo.proveedores = nodo.proveedores[t + 1:]
 
-        # Si no es hoja, también mover los hijos derechos al nuevo nodo
+        # Si no es hoja, también mover los hijos derechos
         if not nodo.hoja:
             nuevo.hijos = nodo.hijos[t + 1:]
+
+        # Guardar la clave y proveedor que van a subir al padre
+        clave_media = nodo.claves[t]
+        proveedor_medio = nodo.proveedores[t]
 
         # Reducir el nodo original a la mitad izquierda
         nodo.claves = nodo.claves[:t]
@@ -60,44 +73,49 @@ class ArbolB:
         if not nodo.hoja:
             nodo.hijos = nodo.hijos[:t + 1]
 
-        # Insertar la clave media y su proveedor en el padre
-        padre.claves.insert(indice, nodo.claves[t])
-        padre.proveedores.insert(indice, nodo.proveedores[t])
-        # Insertar el nuevo nodo como hijo derecho en la posición correcta
+        # Insertar en el padre la clave media y el nuevo nodo como hijo derecho
+        padre.claves.insert(indice, clave_media)
+        padre.proveedores.insert(indice, proveedor_medio)
         padre.hijos.insert(indice + 1, nuevo)
 
-        # Remover la clave y proveedor media del nodo original (porque subió al padre)
-        nodo.claves.pop(t)
-        nodo.proveedores.pop(t)
-
     def insertar_no_lleno(self, nodo, proveedor):
-        # Inserta un proveedor en un nodo que no esta lleno
+        # Inserta un trabajador en un nodo que no está lleno
         i = len(nodo.claves) - 1
+
         if nodo.hoja:
-            # Insertar en la posición correcta para mantener orden
+            # Si es hoja, se inserta en la posición correcta manteniendo orden
             nodo.claves.append(None)
             nodo.proveedores.append(None)
+
+            # Desplazar claves/proveedores mayores hacia la derecha
             while i >= 0 and proveedor.id < nodo.claves[i]:
                 nodo.claves[i + 1] = nodo.claves[i]
                 nodo.proveedores[i + 1] = nodo.proveedores[i]
                 i -= 1
+
+            # Insertar en la posición encontrada
             nodo.claves[i + 1] = proveedor.id
             nodo.proveedores[i + 1] = proveedor
+
         else:
-            # Encontrar el hijo correcto para insertar
+            # Si no es hoja, buscar el hijo correcto para insertar
             while i >= 0 and proveedor.id < nodo.claves[i]:
                 i -= 1
             i += 1
+
             # Si el hijo está lleno, dividirlo primero
             if len(nodo.hijos[i].claves) == self.orden - 1:
                 self.dividir_nodo(nodo, i, nodo.hijos[i])
+                # Decidir en qué hijo continuar después de la división
                 if proveedor.id > nodo.claves[i]:
                     i += 1
-            # Insertar recursivamente en el hijo correcto
+
+            # Llamada recursiva para insertar en el hijo correcto
             self.insertar_no_lleno(nodo.hijos[i], proveedor)
 
     def insertar(self, proveedor):
-        # Inserta un nuevo proveedor en el arbol, si la raiz estallen se divide y crea unaa nueva
+        # Inserta un nuevo trabajador en el árbol
+        # Si la raíz está llena, se divide y se crea una nueva raíz
         raiz = self.raiz
         if len(raiz.claves) == self.orden - 1:
             nuevo_nodo = NodoB(self.orden, hoja=False)
@@ -106,4 +124,5 @@ class ArbolB:
             self.dividir_nodo(nuevo_nodo, 0, raiz)
             self.insertar_no_lleno(nuevo_nodo, proveedor)
         else:
+            # Si no está llena, se inserta directamente
             self.insertar_no_lleno(raiz, proveedor)
